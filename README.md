@@ -37,14 +37,20 @@ npm run dev;
 ~~~
 
 ## 📄**Documentation**
-Use the post route `/send-email` to send emails through this API. In the request body, enter the attributes `email` and `name`, for exemple:
+Use the post route `/send-email` to send emails through this API. In the request body, enter the attributes `from`, `to` (string or array), `subject` (optional), `message`, `text` (optiona), for exemple:
 ~~~json
 {
-    "email": "guifcm12@gmail.com",
-    "name": "Guilherme Feitosa"
+    "from": "guifcm12@gmail.com",
+    "to": [
+        "person1@example.com", 
+        "person2@example.com"
+    ],
+    "subject": "Email-Sender Project",
+    "message": "<h1>Welcome to my email sending service.</h1>",
+    "text": "Welcome to my email sending service."
 }
 ~~~
-As response, you will receive a success message if your email has been sent successfully, or a error message if your email has not been sent.
+As response, you will receive a message with the result data if your email has been sent successfully, or a error message if your email has not been sent.
 
 ## ✨**Technologies**
 - [Node.js](https://nodejs.org/en/docs/)
