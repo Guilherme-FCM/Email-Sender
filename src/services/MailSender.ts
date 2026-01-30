@@ -10,20 +10,23 @@ export default class MailSender {
         public text?: string
     ){}
 
-    async sendMail() {
-        if (! this.from) return new Error('Sender email (from) is required.')
-        if (! this.to) return new Error('Recipient email (to) is required.')
-        if (! this.message) return new Error('A email message is required.')
+    public async sendMail() {
+        const validationError = this.validateFields()
+        if (validationError) return validationError
 
-        const mailOptions: Mail.Options = { 
-            from: this.from,
-            to: this.to,
-            subject: this.subject,
-            text: this.text,
-            html: this.message
-        }
-        
-        const mailServerConfig = {
+        const transporter = nodemailer.createTransport(this.getMailServerConfig())
+        return await transporter.sendMail(this.getMailOptions())
+    }
+
+    private validateFields(): Error | null {
+        if (!this.from) return new Error('Sender email (from) is required.')
+        if (!this.to) return new Error('Recipient email (to) is required.')
+        if (!this.message) return new Error('A email message is required.')
+        return null
+    }
+
+    private getMailServerConfig() {
+        return {
             host: process.env.MAIL_HOST,
             port: Number(process.env.MAIL_PORT),
             secure: Number(process.env.MAIL_PORT) === 465,
@@ -32,8 +35,15 @@ export default class MailSender {
                 pass: process.env.MAIL_PASS
             }
         }
-        
-        const transporter = nodemailer.createTransport(mailServerConfig);
-        return await transporter.sendMail(mailOptions)
+    }
+
+    private getMailOptions(): Mail.Options {
+        return {
+            from: this.from,
+            to: this.to,
+            subject: this.subject,
+            text: this.text,
+            html: this.message
+        }
     }
 }
