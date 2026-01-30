@@ -1,6 +1,5 @@
 import Mail, { Address } from 'nodemailer/lib/mailer'
 import nodemailer from 'nodemailer'
-import mailServerConfig from '../../config/mail.json'
 
 export default class MailSender {
     constructor (
@@ -23,6 +22,17 @@ export default class MailSender {
             text: this.text,
             html: this.message
         }
+        
+        const mailServerConfig = {
+            host: process.env.MAIL_HOST,
+            port: Number(process.env.MAIL_PORT),
+            secure: Number(process.env.MAIL_PORT) === 465,
+            auth: {
+                user: process.env.MAIL_USER,
+                pass: process.env.MAIL_PASS
+            }
+        }
+        
         const transporter = nodemailer.createTransport(mailServerConfig);
         return await transporter.sendMail(mailOptions)
     }
