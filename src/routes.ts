@@ -1,17 +1,8 @@
-import express, { Request, Response } from 'express'
-import MailSender from './services/MailSender'
+import express from 'express'
+import SendMailController from './controllers/SendMailController'
 
 const routes = express.Router()
 
-routes.post('/send-email', async (request: Request, response: Response) => {
-    const { from, to, subject, message, text } = request.body
-
-    const mailSender = new MailSender(from, to, subject, message, text)
-    const result = await mailSender.sendMail()
-    
-    if (result instanceof Error) 
-        return response.status(400).json({ error: result.message })
-    return response.json(result)
-})
+routes.post('/send-email', SendMailController.handle)
 
 export default routes
