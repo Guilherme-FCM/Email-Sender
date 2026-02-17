@@ -9,3 +9,11 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+    depends_on:
+      - dynamodb
+
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "${DYNAMODB_PORT:-8000}:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb"
