@@ -71,4 +71,8 @@ export default class SendMailService {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' }
     }
   }
+
+  async listAll() {
+    return await this.repository.all()
+  }
 }

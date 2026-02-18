@@ -14,4 +14,10 @@ export default class SendMailController {
 
     return response.json(result)
   }
+
+  public static async list(request: Request, response: Response): Promise<Response> {
+    const service = new SendMailService()
+    const result = await service.listAll()
+    return response.json(result)
+  }
 }
