@@ -35,19 +35,23 @@ class RedisConfig {
 
 export default class RedisConnection {
   private static instance: Redis | null = null
-  private static config: RedisConfig = new RedisConfig()
+
+  private static getConfig(): RedisConfig {
+    return new RedisConfig()
+  }
 
   static async getInstance(): Promise<Redis> {
     if (!this.instance) {
+      const config = this.getConfig()
       this.instance = new Redis({
-        host: this.config.getHost(),
-        port: this.config.getPort(),
-        password: this.config.getPassword(),
-        db: this.config.getDb(),
-        maxRetriesPerRequest: this.config.getMaxRetriesPerRequest(),
-        connectTimeout: this.config.getConnectTimeout(),
+        host: config.getHost(),
+        port: config.getPort(),
+        password: config.getPassword(),
+        db: config.getDb(),
+        maxRetriesPerRequest: config.getMaxRetriesPerRequest(),
+        connectTimeout: config.getConnectTimeout(),
         retryStrategy: (times: number) => {
-          if (times > this.config.getMaxRetriesPerRequest()) {
+          if (times > config.getMaxRetriesPerRequest()) {
             return null
           }
           return Math.min(times * 100, 3000)
