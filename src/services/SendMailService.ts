@@ -2,6 +2,7 @@ import { Address } from 'nodemailer/lib/mailer'
 import MailSender from './MailSender'
 import { EmailRepository } from '../repositories/EmailRepository'
 import Email from '../entities/Email'
+import { generatePayloadHash } from '../utils/hashGenerator'
 
 type SendMailRequest = {
   from: Address
@@ -13,6 +14,7 @@ type SendMailRequest = {
 
 type EmailCache = {
   timestamp: number
+  result?: any
 }
 
 export default class SendMailService {
@@ -22,12 +24,6 @@ export default class SendMailService {
 
   constructor() {
     this.repository = new EmailRepository()
-  }
-
-  private getEmailKey(data: SendMailRequest): string {
-    const from = typeof data.from === 'string' ? data.from : data.from.address
-    const to = typeof data.to === 'string' ? data.to : data.to.address
-    return `${from}|${to}|${data.subject}`
   }
 
   private isDuplicate(key: string): boolean {
@@ -44,10 +40,11 @@ export default class SendMailService {
 
   async execute(data: SendMailRequest) {
     try {
-      const key = this.getEmailKey(data)
+      const key = generatePayloadHash(data)
       
       if (this.isDuplicate(key)) {
-        return { skipped: true, reason: 'Duplicate email within 5 minutes' }
+        const cached = SendMailService.cache.get(key)
+        return cached?.result || { status: 'duplicate', message: 'Request already processed' }
       }
 
       const mailSender = new MailSender(
@@ -59,11 +56,11 @@ export default class SendMailService {
       )
 
       const result = await mailSender.sendMail()
-      SendMailService.cache.set(key, { timestamp: Date.now() })
+      SendMailService.cache.set(key, { timestamp: Date.now(), result })
       
       const from = typeof data.from === 'string' ? data.from : data.from.address
       const to = typeof data.to === 'string' ? data.to : data.to.address
-      const email = new Email(from, to, data.subject, data.message, data.text)
+      const email = new Email(from, to, data.subject, data.message, data.text, key)
       await this.repository.save(email)
       
       return result

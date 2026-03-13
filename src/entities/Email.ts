@@ -4,6 +4,7 @@ export default class Email {
     public to: string | string[],
     public subject: string,
     public message: string,
-    public text?: string
+    public text?: string,
+    public idempotencyKey?: string
   ) {}
 }

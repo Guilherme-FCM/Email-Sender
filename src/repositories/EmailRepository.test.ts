@@ -1,0 +1,43 @@
+import { EmailRepository } from './EmailRepository'
+import Email from '../entities/Email'
+import DynamoDB from '../database/DynamoDBConnection'
+import { PutCommand } from '@aws-sdk/lib-dynamodb'
+
+jest.mock('../database/DynamoDBConnection')
+
+describe('EmailRepository', () => {
+  let repository: EmailRepository
+  let mockSend: jest.Mock
+
+  beforeEach(() => {
+    repository = new EmailRepository()
+    mockSend = jest.fn()
+    ;(DynamoDB.getInstance as jest.Mock).mockResolvedValue({ send: mockSend })
+    ;(DynamoDB.getTableName as jest.Mock).mockReturnValue('test-table')
+    jest.clearAllMocks()
+  })
+
+  describe('save', () => {
+    it('should save email with idempotency key to DynamoDB', async () => {
+      mockSend.mockResolvedValue({})
+      
+      const email = new Email(
+        'sender@example.com',
+        'recipient@example.com',
+        'Test Subject',
+        '<p>Test Message</p>',
+        'Test Message',
+        'test-key-123'
+      )
+
+      await repository.save(email)
+
+      expect(mockSend).toHaveBeenCalledTimes(1)
+      const callArg = mockSend.mock.calls[0][0]
+      expect(callArg).toBeInstanceOf(PutCommand)
+      expect(callArg.input.Item.idempotencyKey).toBe('test-key-123')
+      expect(callArg.input.Item.from).toBe('sender@example.com')
+      expect(callArg.input.Item.to).toBe('recipient@example.com')
+    })
+  })
+})

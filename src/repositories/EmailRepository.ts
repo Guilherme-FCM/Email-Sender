@@ -14,6 +14,7 @@ export class EmailRepository {
         subject: email.subject,
         message: email.message,
         text: email.text ?? '',
+        idempotencyKey: email.idempotencyKey,
         createdAt: new Date().toISOString(),
       },
     })

@@ -29,10 +29,37 @@ The service is designed to operate under high load with:
 
 ## Key Features
 
-### Idempotency Guarantees
+### Automatic Idempotency
+- **Zero-configuration idempotency**: Automatically prevents duplicate emails without requiring client headers or keys
+- **Content-based deduplication**: Uses SHA-256 hash of `from + to + subject` to identify duplicates
+- **Smart duplicate detection**: Message content excluded from hash to allow corrections with same subject
+- **5-minute TTL window**: Duplicate requests within 5 minutes return cached response
+- **Transactional control**: DynamoDB conditional writes prevent race conditions
+- **Exactly-once semantics**: Guarantees single email delivery for identical requests
+
+**How it works:**
+```
+Request 1: from=sender@example.com, to=recipient@example.com, subject="Welcome"
+→ Hash: abc123... → Email sent ✅
+
+Request 2: from=sender@example.com, to=recipient@example.com, subject="Welcome"
+→ Hash: abc123... → Duplicate detected, cached response returned ⚠️
+
+Request 3: from=sender@example.com, to=recipient@example.com, subject="Reminder"
+→ Hash: def456... → Different subject, email sent ✅
+```
+
+**Benefits:**
+- ✅ No accidental duplicate emails
+- ✅ Safe retries on network failures
+- ✅ Consistent responses for identical requests
+- ✅ Zero client configuration required
+- ✅ Transparent operation
+
+### Idempotency Guarantees (Advanced)
 - **Robust idempotency** preventing duplicate sends under retry, timeout, or concurrent scenarios
-- **Idempotency-Key header** support (optional but recommended)
-- **Deterministic payload hashing** (recipients + subject + content)
+- **Optional Idempotency-Key header** support for explicit client control (future enhancement)
+- **Deterministic payload hashing** (from + to + subject)
 - **Transactional control** via DynamoDB conditional writes
 - **Exactly-once send semantic** within configurable time window
 

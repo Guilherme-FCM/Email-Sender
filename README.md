@@ -37,7 +37,7 @@ npm run dev;
 ~~~
 
 ## 📄**Documentation**
-Use the post route `/send-email` to send emails through this API. In the request body, enter the attributes `from`, `to` (string or array), `subject` (optional), `message`, `text` (optiona), for exemple:
+Use the post route `/send-email` to send emails through this API. In the request body, enter the attributes `from`, `to` (string or array), `subject` (optional), `message`, `text` (optional), for example:
 ~~~json
 {
     "from": "guifcm12@gmail.com",
