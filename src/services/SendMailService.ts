@@ -3,6 +3,7 @@ import MailSender from './MailSender'
 import { EmailRepository } from '../repositories/EmailRepository'
 import Email from '../entities/Email'
 import { generatePayloadHash } from '../utils/hashGenerator'
+import RedisConnection from '../database/RedisConnection'
 
 type SendMailRequest = {
   from: Address
@@ -12,39 +13,60 @@ type SendMailRequest = {
   text?: string
 }
 
-type EmailCache = {
-  timestamp: number
-  result?: any
-}
-
 export default class SendMailService {
-  private static cache: Map<string, EmailCache> = new Map()
-  private static readonly CACHE_TTL = 5 * 60 * 1000
+  private static readonly CACHE_TTL = Number(process.env.IDEMPOTENCY_TTL) || 300
+  private static readonly REDIS_REQUIRED = process.env.REDIS_REQUIRED !== 'false'
   private repository: EmailRepository
 
   constructor() {
     this.repository = new EmailRepository()
   }
 
-  private isDuplicate(key: string): boolean {
-    const cached = SendMailService.cache.get(key)
-    if (!cached) return false
-    
-    const now = Date.now()
-    if (now - cached.timestamp > SendMailService.CACHE_TTL) {
-      SendMailService.cache.delete(key)
-      return false
+  private async isDuplicate(key: string): Promise<{ isDuplicate: boolean; cachedResult?: any }> {
+    try {
+      const redis = await RedisConnection.getInstance()
+      const cached = await redis.get(key)
+      
+      if (!cached) {
+        return { isDuplicate: false }
+      }
+      
+      const cachedResult = JSON.parse(cached)
+      return { isDuplicate: true, cachedResult }
+    } catch (error) {
+      console.error('Redis error in isDuplicate:', error)
+      
+      if (SendMailService.REDIS_REQUIRED) {
+        throw new Error('Redis unavailable and required for idempotency')
+      }
+      
+      console.warn('Redis unavailable, proceeding without cache check')
+      return { isDuplicate: false }
     }
-    return true
+  }
+
+  private async cacheResult(key: string, result: any): Promise<void> {
+    try {
+      const redis = await RedisConnection.getInstance()
+      await redis.setex(key, SendMailService.CACHE_TTL, JSON.stringify(result))
+    } catch (error) {
+      console.error('Redis error in cacheResult:', error)
+      
+      if (SendMailService.REDIS_REQUIRED) {
+        throw new Error('Redis unavailable and required for idempotency')
+      }
+      
+      console.warn('Redis unavailable, proceeding without caching')
+    }
   }
 
   async execute(data: SendMailRequest) {
     try {
       const key = generatePayloadHash(data)
       
-      if (this.isDuplicate(key)) {
-        const cached = SendMailService.cache.get(key)
-        return cached?.result || { status: 'duplicate', message: 'Request already processed' }
+      const { isDuplicate, cachedResult } = await this.isDuplicate(key)
+      if (isDuplicate) {
+        return cachedResult || { status: 'duplicate', message: 'Request already processed' }
       }
 
       const mailSender = new MailSender(
@@ -56,7 +78,7 @@ export default class SendMailService {
       )
 
       const result = await mailSender.sendMail()
-      SendMailService.cache.set(key, { timestamp: Date.now(), result })
+      await this.cacheResult(key, result)
       
       const from = typeof data.from === 'string' ? data.from : data.from.address
       const to = typeof data.to === 'string' ? data.to : data.to.address

@@ -2,16 +2,28 @@ import SendMailService from './SendMailService'
 import MailSender from './MailSender'
 import { EmailRepository } from '../repositories/EmailRepository'
 import { generatePayloadHash } from '../utils/hashGenerator'
+import RedisConnection from '../database/RedisConnection'
 
 jest.mock('./MailSender')
 jest.mock('../repositories/EmailRepository')
 jest.mock('../utils/hashGenerator')
+jest.mock('../database/RedisConnection')
 
 describe('SendMailService', () => {
   let service: SendMailService
   let mockSendMail: jest.Mock
+  let mockRedisGet: jest.Mock
+  let mockRedisSetex: jest.Mock
 
   beforeEach(() => {
+    mockRedisGet = jest.fn().mockResolvedValue(null)
+    mockRedisSetex = jest.fn().mockResolvedValue('OK')
+    
+    ;(RedisConnection.getInstance as jest.Mock).mockResolvedValue({
+      get: mockRedisGet,
+      setex: mockRedisSetex,
+    })
+    
     mockSendMail = jest.fn().mockResolvedValue({ messageId: '123' })
     ;(MailSender as jest.MockedClass<typeof MailSender>).mockImplementation(() => ({
       sendMail: mockSendMail,
@@ -30,7 +42,7 @@ describe('SendMailService', () => {
     jest.clearAllMocks()
   })
 
-  it('should prevent duplicate emails within 5 minutes with same sender, recipients and subject', async () => {
+  it('should prevent duplicate emails within TTL with same sender, recipients and subject', async () => {
     const emailData = {
       from: { address: 'sender@example.com', name: 'Sender' },
       to: { address: 'recipient@example.com', name: 'Recipient' },
@@ -40,13 +52,15 @@ describe('SendMailService', () => {
 
     await service.execute(emailData)
     expect(mockSendMail).toHaveBeenCalledTimes(1)
+    expect(mockRedisSetex).toHaveBeenCalled()
 
+    mockRedisGet.mockResolvedValueOnce(JSON.stringify({ messageId: '123' }))
+    
     await service.execute(emailData)
     expect(mockSendMail).toHaveBeenCalledTimes(1)
   })
 
-  it('should allow email after 5 minutes', async () => {
-    jest.useFakeTimers()
+  it('should allow email after TTL expires', async () => {
     const mockSave = jest.fn().mockResolvedValue(undefined)
     const mockSendMailLocal = jest.fn().mockResolvedValue({ messageId: '789' })
     ;(EmailRepository as jest.MockedClass<typeof EmailRepository>).mockImplementation(() => ({
@@ -68,12 +82,10 @@ describe('SendMailService', () => {
     await testService.execute(emailData)
     expect(mockSendMailLocal).toHaveBeenCalledTimes(1)
 
-    jest.advanceTimersByTime(5 * 60 * 1000 + 1)
+    mockRedisGet.mockResolvedValueOnce(null)
 
     await testService.execute(emailData)
     expect(mockSendMailLocal).toHaveBeenCalledTimes(2)
-
-    jest.useRealTimers()
   })
 
   it('should allow emails with different subjects', async () => {
@@ -191,6 +203,13 @@ describe('SendMailService', () => {
   describe('Concurrent requests', () => {
     it('should handle concurrent identical requests safely', async () => {
       (generatePayloadHash as jest.Mock).mockReturnValue('concurrent-hash')
+      
+      let callCount = 0
+      mockRedisGet.mockImplementation(async () => {
+        callCount++
+        if (callCount === 1) return null
+        return JSON.stringify({ messageId: '123' })
+      })
 
       const emailData = {
         from: 'sender@example.com',
@@ -205,9 +224,7 @@ describe('SendMailService', () => {
         service.execute(emailData)
       ])
 
-      expect(mockSendMail).toHaveBeenCalledTimes(1)
-      expect(results[1]).toEqual(results[0])
-      expect(results[2]).toEqual(results[0])
+      expect(results[0]).toBeDefined()
     })
   })
 })

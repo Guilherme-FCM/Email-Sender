@@ -11,9 +11,29 @@ services:
       - /app/node_modules
     depends_on:
       - dynamodb
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - DYNAMODB_ENDPOINT=http://dynamodb:8000
 
   dynamodb:
     image: amazon/dynamodb-local:latest
     ports:
       - "${DYNAMODB_PORT:-8000}:8000"
     command: "-jar DynamoDBLocal.jar -sharedDb"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis_data:
