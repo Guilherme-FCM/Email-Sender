@@ -73,4 +73,40 @@ describe('MailSender', () => {
     expect(result).toBeInstanceOf(Error)
     expect((result as Error).message).toBe('A email message is required.')
   })
+
+  describe('SMTP config', () => {
+    it('should set secure to true when port is 465', async () => {
+      process.env.MAIL_PORT = '465'
+      const mailSender = new MailSender(
+        { address: 'sender@example.com', name: 'Sender' },
+        { address: 'recipient@example.com', name: 'Recipient' },
+        'Test Subject',
+        '<p>Hi</p>'
+      )
+
+      await mailSender.sendMail()
+
+      expect(mockCreateTransport).toHaveBeenCalledWith(
+        expect.objectContaining({ secure: true, port: 465 })
+      )
+      delete process.env.MAIL_PORT
+    })
+
+    it('should set secure to false when port is not 465', async () => {
+      process.env.MAIL_PORT = '587'
+      const mailSender = new MailSender(
+        { address: 'sender@example.com', name: 'Sender' },
+        { address: 'recipient@example.com', name: 'Recipient' },
+        'Test Subject',
+        '<p>Hi</p>'
+      )
+
+      await mailSender.sendMail()
+
+      expect(mockCreateTransport).toHaveBeenCalledWith(
+        expect.objectContaining({ secure: false, port: 587 })
+      )
+      delete process.env.MAIL_PORT
+    })
+  })
 })

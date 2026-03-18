@@ -18,6 +18,8 @@ describe('SendMailService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.spyOn(console, 'error').mockImplementation()
+    jest.spyOn(console, 'warn').mockImplementation()
     
     mockRedisGet = jest.fn().mockResolvedValue(null)
     mockRedisSetex = jest.fn().mockResolvedValue('OK')
@@ -43,6 +45,10 @@ describe('SendMailService', () => {
     })
     
     service = new SendMailService()
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
   it('should prevent duplicate emails within TTL with same sender, recipients and subject', async () => {
@@ -210,6 +216,54 @@ describe('SendMailService', () => {
       expect(results).toHaveLength(3)
       expect(results[0]).toBeDefined()
       expect(mockSendMail).toHaveBeenCalled()
+    })
+  })
+
+  describe('listAll', () => {
+    it('should delegate to repository and return all emails', async () => {
+      const mockAll = jest.fn().mockResolvedValue({ Items: [{ id: '1' }] })
+      ;(EmailRepository as jest.MockedClass<typeof EmailRepository>).mockImplementation(() => ({
+        save: mockSave,
+        all: mockAll,
+      } as any))
+
+      const result = await new SendMailService().listAll()
+
+      expect(mockAll).toHaveBeenCalledTimes(1)
+      expect(result).toEqual({ Items: [{ id: '1' }] })
+    })
+  })
+
+  describe('Redis unavailable', () => {
+    it('should return error when Redis is required and unavailable', async () => {
+      process.env.REDIS_REQUIRED = 'true'
+      ;(RedisConnection.getInstance as jest.Mock).mockRejectedValue(new Error('Connection refused'))
+
+      const result = await service.execute({
+        from: { address: 'sender@example.com', name: 'Sender' },
+        to: { address: 'recipient@example.com', name: 'Recipient' },
+        subject: 'Test Subject',
+        message: '<p>Hi</p>',
+      })
+
+      expect(result).toEqual(expect.objectContaining({ success: false }))
+      delete process.env.REDIS_REQUIRED
+    })
+
+    it('should proceed without cache when Redis is optional and unavailable', async () => {
+      ;(SendMailService as any).REDIS_REQUIRED = false
+      ;(RedisConnection.getInstance as jest.Mock).mockRejectedValue(new Error('Connection refused'))
+
+      const result = await service.execute({
+        from: { address: 'sender@example.com', name: 'Sender' },
+        to: { address: 'recipient@example.com', name: 'Recipient' },
+        subject: 'Test Subject',
+        message: '<p>Hi</p>',
+      })
+
+      expect(mockSendMail).toHaveBeenCalledTimes(1)
+      expect(result).toEqual({ messageId: '123' })
+      ;(SendMailService as any).REDIS_REQUIRED = true
     })
   })
 })

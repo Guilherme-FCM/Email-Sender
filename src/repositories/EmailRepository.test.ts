@@ -1,7 +1,7 @@
 import { EmailRepository } from './EmailRepository'
 import Email from '../entities/Email'
 import DynamoDB from '../database/DynamoDBConnection'
-import { PutCommand } from '@aws-sdk/lib-dynamodb'
+import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 
 jest.mock('../database/DynamoDBConnection')
 
@@ -38,6 +38,20 @@ describe('EmailRepository', () => {
       expect(callArg.input.Item.idempotencyKey).toBe('test-key-123')
       expect(callArg.input.Item.from).toBe('sender@example.com')
       expect(callArg.input.Item.to).toBe('recipient@example.com')
+    })
+  })
+
+  describe('all', () => {
+    it('should scan and return all emails from DynamoDB', async () => {
+      const mockItems = [{ id: '1', from: 'sender@example.com' }]
+      mockSend.mockResolvedValue({ Items: mockItems })
+
+      const result = await repository.all()
+
+      expect(mockSend).toHaveBeenCalledTimes(1)
+      const callArg = mockSend.mock.calls[0][0]
+      expect(callArg).toBeInstanceOf(ScanCommand)
+      expect(result.Items).toEqual(mockItems)
     })
   })
 })
