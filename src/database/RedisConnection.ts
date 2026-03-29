@@ -51,9 +51,6 @@ export default class RedisConnection {
         maxRetriesPerRequest: config.getMaxRetriesPerRequest(),
         connectTimeout: config.getConnectTimeout(),
         retryStrategy: (times: number) => {
-          if (times > config.getMaxRetriesPerRequest()) {
-            return null
-          }
           return Math.min(times * 100, 3000)
         }
       })
@@ -72,6 +69,11 @@ export default class RedisConnection {
 
       this.instance.on('reconnecting', () => {
         console.log('Redis reconnecting...')
+      })
+
+      this.instance.on('end', () => {
+        console.log('Redis connection closed')
+        this.instance = null
       })
     }
 

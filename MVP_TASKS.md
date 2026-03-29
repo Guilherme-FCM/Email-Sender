@@ -42,14 +42,14 @@
 ---
 
 ### 3. Message Queue Architecture (SQS)
-- [ ] Add `@aws-sdk/client-sqs` dependency
-- [ ] Create `src/services/EmailQueueService.ts` for enqueueing
-- [ ] Update SendMailController to return 202 Accepted
-- [ ] Create `src/workers/EmailWorker.ts` for queue processing
-- [ ] Implement Dead Letter Queue (DLQ) handling
-- [ ] Add correlation ID tracking (X-Correlation-ID header)
-- [ ] Update docker-compose.yml with LocalStack for SQS testing
-- [ ] Add SQS configuration to .env.example
+- [x] Add `@aws-sdk/client-sqs` dependency
+- [x] Create `src/services/EmailQueueService.ts` for enqueueing
+- [x] Update SendMailController to return 202 Accepted
+- [x] Create `src/workers/EmailWorker.ts` for queue processing
+- [x] Implement Dead Letter Queue (DLQ) handling
+- [x] Add correlation ID tracking (X-Correlation-ID header)
+- [x] Update docker-compose.yml with LocalStack for SQS testing
+- [x] Add SQS configuration to .env.example
 
 **Acceptance Criteria:**
 - API returns 202 Accepted with messageId

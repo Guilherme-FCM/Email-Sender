@@ -78,6 +78,8 @@ export default class SendMailService {
       )
 
       const result = await mailSender.sendMail()
+      if (result instanceof Error) throw result
+
       await this.cacheResult(key, result)
       
       const from = typeof data.from === 'string' ? data.from : data.from.address
@@ -87,6 +89,7 @@ export default class SendMailService {
       
       return result
     } catch (error) {
+      console.error('[SendMailService] Error:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' }
     }
   }

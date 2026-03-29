@@ -17,6 +17,11 @@ All documentation follows a consistent naming pattern: `TASK{N}_{DESCRIPTION}.md
 - [TASK2_SUMMARY.md](./TASK2_SUMMARY.md) - Executive summary and metrics
 - [TASK2_QUICK_START.md](./TASK2_QUICK_START.md) - Quick start guide for developers
 
+#### Task 3: SQS Message Queue
+- [TASK3_SQS_INTEGRATION.md](./TASK3_SQS_INTEGRATION.md) - Technical implementation guide
+- [TASK3_SUMMARY.md](./TASK3_SUMMARY.md) - Executive summary and files changed
+- [TASK3_QUICK_START.md](./TASK3_QUICK_START.md) - Quick start guide for developers
+
 #### Standards
 - [DOCUMENTATION_STANDARDS.md](./DOCUMENTATION_STANDARDS.md) - Documentation patterns and conventions
 

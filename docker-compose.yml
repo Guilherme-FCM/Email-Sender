@@ -10,11 +10,17 @@ services:
       - .:/app
       - /app/node_modules
     depends_on:
-      - dynamodb
-      - redis
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      sqs-init:
+        condition: service_completed_successfully
     environment:
       - REDIS_HOST=redis
       - DYNAMODB_ENDPOINT=http://dynamodb:8000
+      - SQS_ENDPOINT=http://localstack:4566
+      - SQS_QUEUE_URL=http://localstack:4566/000000000000/emails-queue
 
   dynamodb:
     image: amazon/dynamodb-local:latest
@@ -34,6 +40,35 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+
+  localstack:
+    image: localstack/localstack:3.0
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs
+      - DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sqs-init:
+    image: amazon/aws-cli
+    depends_on:
+      localstack:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - ./scripts/init-sqs.sh:/init-sqs.sh
+    entrypoint: ["/bin/sh", "/init-sqs.sh"]
+    restart: on-failure
 
 volumes:
   redis_data:
