@@ -42,7 +42,6 @@ describe('Concurrency integration', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks()
-    await RedisConnection.close()
 
     mockSendMail = jest.fn().mockResolvedValue({ messageId: 'smtp-race-001' })
     mockSave = jest.fn().mockResolvedValue(undefined)
@@ -57,6 +56,15 @@ describe('Concurrency integration', () => {
   })
 
   describe('Lock', () => {
+    beforeAll(async () => {
+      await RedisConnection.getInstance()
+    })
+
+    afterEach(async () => {
+      const redis = await RedisConnection.getInstance()
+      await redis.del('test-resource', 'held-resource', 'reacquire-resource', 'resource-a', 'resource-b')
+    })
+
     it('should acquire a lock and return true', async () => {
       const acquired = await Lock.acquire('test-resource')
       expect(acquired).toBe(true)

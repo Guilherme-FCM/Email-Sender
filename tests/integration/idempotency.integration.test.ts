@@ -41,7 +41,8 @@ describe('Idempotency integration', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks()
-    await RedisConnection.close()
+    const redis = await RedisConnection.getInstance()
+    await redis.flushdb()
 
     mockSendMail = jest.fn().mockResolvedValue({ messageId: 'smtp-001' })
     mockSave = jest.fn().mockResolvedValue(undefined)

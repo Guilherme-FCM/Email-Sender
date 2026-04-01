@@ -60,20 +60,7 @@ export default class RedisConnection {
         console.error('Redis connection error:', error)
       })
 
-      this.instance.on('connect', () => {
-        console.log('Redis connected successfully')
-      })
-
-      this.instance.on('ready', () => {
-        console.log('Redis ready to accept commands')
-      })
-
-      this.instance.on('reconnecting', () => {
-        console.log('Redis reconnecting...')
-      })
-
       this.instance.on('end', () => {
-        console.log('Redis connection closed')
         this.instance = null
       })
     }
