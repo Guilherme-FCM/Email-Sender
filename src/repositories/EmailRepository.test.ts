@@ -39,6 +39,24 @@ describe('EmailRepository', () => {
       expect(callArg.input.Item.from).toBe('sender@example.com')
       expect(callArg.input.Item.to).toBe('recipient@example.com')
     })
+
+    it('should silently ignore ConditionalCheckFailedException', async () => {
+      const error = new Error('Duplicate')
+      error.name = 'ConditionalCheckFailedException'
+      mockSend.mockRejectedValue(error)
+
+      const email = new Email('a@a.com', 'b@b.com', 'S', 'M')
+      await expect(repository.save(email)).resolves.not.toThrow()
+    })
+
+    it('should rethrow non-ConditionalCheckFailedException errors', async () => {
+      const error = new Error('DynamoDB unavailable')
+      error.name = 'ProvisionedThroughputExceededException'
+      mockSend.mockRejectedValue(error)
+
+      const email = new Email('a@a.com', 'b@b.com', 'S', 'M')
+      await expect(repository.save(email)).rejects.toThrow('DynamoDB unavailable')
+    })
   })
 
   describe('all', () => {

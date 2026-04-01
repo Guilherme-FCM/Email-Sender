@@ -75,6 +75,33 @@ describe('RedisConnection', () => {
       expect(mockRedis.on).toHaveBeenCalledWith('ready', expect.any(Function))
       expect(mockRedis.on).toHaveBeenCalledWith('reconnecting', expect.any(Function))
     })
+
+    it('should invoke event callbacks without throwing', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
+      const logSpy = jest.spyOn(console, 'log').mockImplementation()
+
+      const handlers: Record<string, Function> = {}
+      mockRedis.on.mockImplementation((event: string, cb: Function) => {
+        handlers[event] = cb
+      })
+
+      await RedisConnection.getInstance()
+
+      handlers['error'](new Error('test error'))
+      handlers['connect']()
+      handlers['ready']()
+      handlers['reconnecting']()
+      handlers['end']()
+
+      expect(consoleSpy).toHaveBeenCalledWith('Redis connection error:', expect.any(Error))
+      expect(logSpy).toHaveBeenCalledWith('Redis connected successfully')
+      expect(logSpy).toHaveBeenCalledWith('Redis ready to accept commands')
+      expect(logSpy).toHaveBeenCalledWith('Redis reconnecting...')
+      expect(logSpy).toHaveBeenCalledWith('Redis connection closed')
+
+      consoleSpy.mockRestore()
+      logSpy.mockRestore()
+    })
   })
 
   describe('healthCheck', () => {

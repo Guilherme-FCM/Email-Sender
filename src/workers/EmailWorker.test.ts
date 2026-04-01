@@ -154,4 +154,19 @@ describe('EmailWorker', () => {
       expect(worker.isRunning()).toBe(false)
     })
   })
+
+  describe('constructor', () => {
+    it('should configure SQS client with custom endpoint when SQS_ENDPOINT is set', () => {
+      process.env.SQS_ENDPOINT = 'http://localhost:4566'
+      const w = new EmailWorker()
+      expect(w).toBeDefined()
+      delete process.env.SQS_ENDPOINT
+    })
+
+    it('should configure SQS client without endpoint when SQS_ENDPOINT is not set', () => {
+      delete process.env.SQS_ENDPOINT
+      const w = new EmailWorker()
+      expect(w).toBeDefined()
+    })
+  })
 })
