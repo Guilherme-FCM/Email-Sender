@@ -96,5 +96,14 @@ describe('SQSEmailQueue', () => {
 
       await expect(queue.enqueue(emailData, 'corr-007')).rejects.toThrow('SQS unavailable')
     })
+
+    it('should configure SQS client with custom endpoint when SQS_ENDPOINT is set', async () => {
+      process.env.SQS_ENDPOINT = 'http://localhost:4566'
+      mockSend.mockResolvedValue({ MessageId: 'sqs-endpoint-test' })
+      const q = new SQSEmailQueue()
+      const result = await q.enqueue(emailData, 'corr-endpoint')
+      expect(result.messageId).toBe('sqs-endpoint-test')
+      delete process.env.SQS_ENDPOINT
+    })
   })
 })

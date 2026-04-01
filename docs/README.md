@@ -27,6 +27,11 @@ All documentation follows a consistent naming pattern: `TASK{N}_{DESCRIPTION}.md
 - [TASK4_SUMMARY.md](./TASK4_SUMMARY.md) - Executive summary and files changed
 - [TASK4_QUICK_START.md](./TASK4_QUICK_START.md) - Quick start guide for developers
 
+#### Task 8: Comprehensive Test Suite
+- [TASK8_COMPREHENSIVE_TEST_SUITE.md](./TASK8_COMPREHENSIVE_TEST_SUITE.md) - Technical guide: test strategy, coverage targets, integration tests
+- [TASK8_SUMMARY.md](./TASK8_SUMMARY.md) - Executive summary, files changed, acceptance criteria
+- [TASK8_QUICK_START.md](./TASK8_QUICK_START.md) - Step-by-step guide to run all test types
+
 #### Standards
 - [DOCUMENTATION_STANDARDS.md](./DOCUMENTATION_STANDARDS.md) - Documentation patterns and conventions
 

@@ -17,6 +17,7 @@ describe('RedisConnection', () => {
       del: jest.fn(),
       ping: jest.fn().mockResolvedValue('PONG'),
       quit: jest.fn().mockResolvedValue('OK'),
+      connect: jest.fn().mockResolvedValue(undefined),
       on: jest.fn(),
       status: 'ready',
       options: {
@@ -58,7 +59,8 @@ describe('RedisConnection', () => {
         expect.objectContaining({
           host: 'testhost',
           port: 6380,
-          db: 1
+          db: 1,
+          lazyConnect: true,
         })
       )
       
@@ -69,11 +71,29 @@ describe('RedisConnection', () => {
 
     it('should register event handlers', async () => {
       await RedisConnection.getInstance()
-      
+
       expect(mockRedis.on).toHaveBeenCalledWith('error', expect.any(Function))
-      expect(mockRedis.on).toHaveBeenCalledWith('connect', expect.any(Function))
-      expect(mockRedis.on).toHaveBeenCalledWith('ready', expect.any(Function))
-      expect(mockRedis.on).toHaveBeenCalledWith('reconnecting', expect.any(Function))
+      expect(mockRedis.on).toHaveBeenCalledWith('end', expect.any(Function))
+    })
+
+    it('should invoke event callbacks without throwing', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
+
+      const handlers: Record<string, Function> = {}
+      mockRedis.on.mockImplementation((event: string, cb: Function) => {
+        handlers[event] = cb
+      })
+      // connect must resolve before handlers are invoked
+      mockRedis.connect.mockResolvedValue(undefined)
+
+      await RedisConnection.getInstance()
+
+      handlers['error'](new Error('test error'))
+      handlers['end']()
+
+      expect(consoleSpy).toHaveBeenCalledWith('Redis connection error:', expect.any(Error))
+
+      consoleSpy.mockRestore()
     })
   })
 

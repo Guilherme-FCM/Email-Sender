@@ -239,6 +239,19 @@ describe('SendMailService', () => {
     })
   })
 
+  it('should return error response when MailSender.sendMail returns an Error', async () => {
+    mockSendMail.mockResolvedValue(new Error('SMTP connection refused'))
+
+    const result = await service.execute({
+      from: { address: 'sender@example.com', name: 'Sender' },
+      to: { address: 'recipient@example.com', name: 'Recipient' },
+      subject: 'Test Subject',
+      message: '<p>Hi</p>',
+    })
+
+    expect(result).toEqual(expect.objectContaining({ success: false, error: 'SMTP connection refused' }))
+  })
+
   describe('Redis unavailable', () => {
     it('should return error when Redis is required and unavailable', async () => {
       process.env.REDIS_REQUIRED = 'true'
