@@ -5,6 +5,7 @@ export default class Email {
     public subject: string,
     public message: string,
     public text?: string,
-    public idempotencyKey?: string
+    public idempotencyKey?: string,
+    public version: number = 1
   ) {}
 }

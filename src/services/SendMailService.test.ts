@@ -3,11 +3,13 @@ import MailSender from './MailSender'
 import { EmailRepository } from '../repositories/EmailRepository'
 import { generatePayloadHash } from '../utils/hashGenerator'
 import RedisConnection from '../database/RedisConnection'
+import Lock from '../utils/Lock'
 
 jest.mock('./MailSender')
 jest.mock('../repositories/EmailRepository')
 jest.mock('../utils/hashGenerator')
 jest.mock('../database/RedisConnection')
+jest.mock('../utils/Lock')
 
 describe('SendMailService', () => {
   let service: SendMailService
@@ -20,6 +22,9 @@ describe('SendMailService', () => {
     jest.clearAllMocks()
     jest.spyOn(console, 'error').mockImplementation()
     jest.spyOn(console, 'warn').mockImplementation()
+
+    ;(Lock.acquire as jest.Mock).mockResolvedValue(true)
+    ;(Lock.release as jest.Mock).mockResolvedValue(undefined)
     
     mockRedisGet = jest.fn().mockResolvedValue(null)
     mockRedisSetex = jest.fn().mockResolvedValue('OK')

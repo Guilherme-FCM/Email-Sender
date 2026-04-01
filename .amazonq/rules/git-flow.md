@@ -37,11 +37,20 @@ git push -u origin task/TASK{N}_{DESCRIPTION}
 ```
 
 ### 6. Create Pull Request
+Write the PR body to a temp file first, then create the PR using `--body-file`. This ensures newlines render correctly on all platforms:
 ```bash
+echo ## Summary > pr_body.txt
+echo {what was implemented} >> pr_body.txt
+echo. >> pr_body.txt
+echo ## Changes >> pr_body.txt
+echo {list of files changed} >> pr_body.txt
+
 gh pr create \
   --title "TASK{N}: {Short Description}" \
-  --body "## Summary\n{what was implemented}\n\n## Changes\n{list of files changed}" \
+  --body-file pr_body.txt \
   --base main
+
+del pr_body.txt
 ```
 
 ---

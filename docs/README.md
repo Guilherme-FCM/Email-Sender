@@ -22,6 +22,11 @@ All documentation follows a consistent naming pattern: `TASK{N}_{DESCRIPTION}.md
 - [TASK3_SUMMARY.md](./TASK3_SUMMARY.md) - Executive summary and files changed
 - [TASK3_QUICK_START.md](./TASK3_QUICK_START.md) - Quick start guide for developers
 
+#### Task 4: Concurrency Control
+- [TASK4_CONCURRENCY_CONTROL.md](./TASK4_CONCURRENCY_CONTROL.md) - Technical implementation guide
+- [TASK4_SUMMARY.md](./TASK4_SUMMARY.md) - Executive summary and files changed
+- [TASK4_QUICK_START.md](./TASK4_QUICK_START.md) - Quick start guide for developers
+
 #### Standards
 - [DOCUMENTATION_STANDARDS.md](./DOCUMENTATION_STANDARDS.md) - Documentation patterns and conventions
 

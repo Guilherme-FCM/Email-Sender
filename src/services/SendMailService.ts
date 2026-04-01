@@ -4,6 +4,7 @@ import { EmailRepository } from '../repositories/EmailRepository'
 import Email from '../entities/Email'
 import { generatePayloadHash } from '../utils/hashGenerator'
 import RedisConnection from '../database/RedisConnection'
+import Lock from '../utils/Lock'
 
 type SendMailRequest = {
   from: Address
@@ -26,20 +27,11 @@ export default class SendMailService {
     try {
       const redis = await RedisConnection.getInstance()
       const cached = await redis.get(key)
-      
-      if (!cached) {
-        return { isDuplicate: false }
-      }
-      
-      const cachedResult = JSON.parse(cached)
-      return { isDuplicate: true, cachedResult }
+      if (!cached) return { isDuplicate: false }
+      return { isDuplicate: true, cachedResult: JSON.parse(cached) }
     } catch (error) {
       console.error('Redis error in isDuplicate:', error)
-      
-      if (SendMailService.REDIS_REQUIRED) {
-        throw new Error('Redis unavailable and required for idempotency')
-      }
-      
+      if (SendMailService.REDIS_REQUIRED) throw new Error('Redis unavailable and required for idempotency')
       console.warn('Redis unavailable, proceeding without cache check')
       return { isDuplicate: false }
     }
@@ -51,46 +43,39 @@ export default class SendMailService {
       await redis.setex(key, SendMailService.CACHE_TTL, JSON.stringify(result))
     } catch (error) {
       console.error('Redis error in cacheResult:', error)
-      
-      if (SendMailService.REDIS_REQUIRED) {
-        throw new Error('Redis unavailable and required for idempotency')
-      }
-      
+      if (SendMailService.REDIS_REQUIRED) throw new Error('Redis unavailable and required for idempotency')
       console.warn('Redis unavailable, proceeding without caching')
     }
   }
 
   async execute(data: SendMailRequest) {
+    const key = generatePayloadHash(data)
+
+    const acquired = await Lock.acquire(key)
+    if (!acquired) {
+      return { status: 'processing', message: 'Request is already being processed' }
+    }
+
     try {
-      const key = generatePayloadHash(data)
-      
       const { isDuplicate, cachedResult } = await this.isDuplicate(key)
-      if (isDuplicate) {
-        return cachedResult || { status: 'duplicate', message: 'Request already processed' }
-      }
+      if (isDuplicate) return cachedResult || { status: 'duplicate', message: 'Request already processed' }
 
-      const mailSender = new MailSender(
-        data.from,
-        data.to,
-        data.subject,
-        data.message,
-        data.text
-      )
-
+      const mailSender = new MailSender(data.from, data.to, data.subject, data.message, data.text)
       const result = await mailSender.sendMail()
       if (result instanceof Error) throw result
 
       await this.cacheResult(key, result)
-      
+
       const from = typeof data.from === 'string' ? data.from : data.from.address
       const to = typeof data.to === 'string' ? data.to : data.to.address
-      const email = new Email(from, to, data.subject, data.message, data.text, key)
-      await this.repository.save(email)
-      
+      await this.repository.save(new Email(from, to, data.subject, data.message, data.text, key))
+
       return result
     } catch (error) {
       console.error('[SendMailService] Error:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' }
+    } finally {
+      await Lock.release(key)
     }
   }
 
