@@ -1,4 +1,5 @@
 import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
+import pLimit from 'p-limit'
 import { IEmailWorker } from './IEmailWorker'
 import SendMailService from '../services/SendMailService'
 
@@ -7,6 +8,7 @@ export class EmailWorker implements IEmailWorker {
   private queueUrl: string
   private service: SendMailService
   private running = false
+  private limit = pLimit(Number(process.env.SMTP_MAX_CONNECTIONS) || 5)
 
   constructor() {
     const endpoint = process.env.SQS_ENDPOINT
@@ -49,19 +51,23 @@ export class EmailWorker implements IEmailWorker {
       })
     )
 
-    for (const message of Messages) {
-      try {
-        const data = JSON.parse(message.Body!)
-        await this.service.execute(data)
-        await this.client.send(
-          new DeleteMessageCommand({
-            QueueUrl: this.queueUrl,
-            ReceiptHandle: message.ReceiptHandle!,
-          })
-        )
-      } catch (error) {
-        console.error('[EmailWorker] Failed to process message:', message.MessageId, error)
-      }
-    }
+    await Promise.all(
+      Messages.map(message =>
+        this.limit(async () => {
+          try {
+            const data = JSON.parse(message.Body!)
+            await this.service.execute(data)
+            await this.client.send(
+              new DeleteMessageCommand({
+                QueueUrl: this.queueUrl,
+                ReceiptHandle: message.ReceiptHandle!,
+              })
+            )
+          } catch (error) {
+            console.error('[EmailWorker] Failed to process message:', message.MessageId, error)
+          }
+        })
+      )
+    )
   }
 }

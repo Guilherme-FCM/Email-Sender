@@ -15,19 +15,23 @@ export class EmailRepository {
         message: email.message,
         text: email.text ?? '',
         idempotencyKey: email.idempotencyKey,
+        version: email.version,
         createdAt: new Date().toISOString(),
       },
+      ConditionExpression: 'attribute_not_exists(id)',
     })
 
-    await dynamoDB.send(params)
+    try {
+      await dynamoDB.send(params)
+    } catch (error: any) {
+      if (error.name === 'ConditionalCheckFailedException') return
+      throw error
+    }
   }
 
   async all(): Promise<any> {
     const dynamoDB = await DynamoDB.getInstance()
-    const params = new ScanCommand({
-      TableName: DynamoDB.getTableName(),
-    })
-
+    const params = new ScanCommand({ TableName: DynamoDB.getTableName() })
     return dynamoDB.send(params)
   }
 }
