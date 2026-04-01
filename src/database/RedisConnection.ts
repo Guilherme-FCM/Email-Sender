@@ -44,7 +44,7 @@ export default class RedisConnection {
     if (!this.instance) {
       const config = this.getConfig()
       const isTest = process.env.NODE_ENV === 'test'
-      this.instance = new Redis({
+      const instance = new Redis({
         host: config.getHost(),
         port: config.getPort(),
         password: config.getPassword(),
@@ -54,15 +54,17 @@ export default class RedisConnection {
         retryStrategy: isTest ? () => null : (times: number) => Math.min(times * 100, 3000),
         lazyConnect: true,
       })
-      await this.instance.connect()
 
-      this.instance.on('error', (error) => {
+      instance.on('error', (error) => {
         console.error('Redis connection error:', error)
       })
 
-      this.instance.on('end', () => {
+      instance.on('end', () => {
         this.instance = null
       })
+
+      await instance.connect()
+      this.instance = instance
     }
 
     return this.instance

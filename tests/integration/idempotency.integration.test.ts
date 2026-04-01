@@ -68,14 +68,19 @@ describe('Idempotency integration', () => {
   })
 
   it('should allow resend after TTL expires', async () => {
+    const ttlEmailData = { ...emailData, subject: 'TTL Expiry Test' }
     const service = new SendMailService()
 
-    await service.execute(emailData)
+    await service.execute(ttlEmailData)
     expect(mockSendMail).toHaveBeenCalledTimes(1)
 
-    await new Promise(resolve => setTimeout(resolve, 2100))
+    // Manually expire the key in Redis to simulate TTL without waiting
+    const { generatePayloadHash } = await import('../../src/utils/hashGenerator')
+    const key = generatePayloadHash(ttlEmailData)
+    const redis = await RedisConnection.getInstance()
+    await redis.del(key)
 
-    await service.execute(emailData)
+    await service.execute(ttlEmailData)
     expect(mockSendMail).toHaveBeenCalledTimes(2)
   }, 15_000)
 

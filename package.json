@@ -31,7 +31,7 @@
     "test": "jest --testPathIgnorePatterns=tests/integration tests/feature",
     "test:watch": "jest --watch --testPathIgnorePatterns=tests/integration tests/feature",
     "test:coverage": "jest --coverage --testPathIgnorePatterns=tests/integration tests/feature",
-    "test:integration": "jest --testPathPattern=tests/integration --runInBand",
+    "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testPathPattern=tests/integration --runInBand",
     "test:feature": "jest --testPathPattern=tests/feature --runInBand"
   },
   "repository": {

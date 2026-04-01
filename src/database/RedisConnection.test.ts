@@ -83,6 +83,8 @@ describe('RedisConnection', () => {
       mockRedis.on.mockImplementation((event: string, cb: Function) => {
         handlers[event] = cb
       })
+      // connect must resolve before handlers are invoked
+      mockRedis.connect.mockResolvedValue(undefined)
 
       await RedisConnection.getInstance()
 

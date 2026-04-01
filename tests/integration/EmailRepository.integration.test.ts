@@ -1,6 +1,7 @@
 import { GenericContainer, StartedTestContainer } from 'testcontainers'
 import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
+import { NodeHttpHandler } from '@smithy/node-http-handler'
 import Email from '../../src/entities/Email'
 
 describe('EmailRepository integration', () => {
@@ -26,6 +27,7 @@ describe('EmailRepository integration', () => {
       region: 'us-east-1',
       endpoint,
       credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
+      requestHandler: new NodeHttpHandler(),
     })
     docClient = DynamoDBDocumentClient.from(client)
 

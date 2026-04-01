@@ -20,10 +20,6 @@ describe('RedisConnection integration', () => {
     delete process.env.REDIS_PORT
   })
 
-  beforeEach(async () => {
-    await RedisConnection.close()
-  })
-
   it('should connect and return a working Redis instance', async () => {
     const redis = await RedisConnection.getInstance()
     expect(redis).toBeDefined()
@@ -60,8 +56,10 @@ describe('RedisConnection integration', () => {
     expect(r1).toBe(r2)
   })
 
-  it('should close the connection cleanly', async () => {
-    await RedisConnection.getInstance()
+  it('should close the connection cleanly and allow reconnect', async () => {
     await expect(RedisConnection.close()).resolves.not.toThrow()
+    // Should reconnect transparently on next call
+    const redis = await RedisConnection.getInstance()
+    expect(redis).toBeDefined()
   })
 })
