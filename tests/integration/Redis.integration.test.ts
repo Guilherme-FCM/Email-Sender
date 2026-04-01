@@ -15,14 +15,13 @@ describe('RedisConnection integration', () => {
 
   afterAll(async () => {
     await RedisConnection.close()
-    ;(RedisConnection as any).instance = null
     await container.stop()
     delete process.env.REDIS_HOST
     delete process.env.REDIS_PORT
   })
 
-  beforeEach(() => {
-    ;(RedisConnection as any).instance = null
+  beforeEach(async () => {
+    await RedisConnection.close()
   })
 
   it('should connect and return a working Redis instance', async () => {

@@ -33,7 +33,6 @@ describe('Concurrency integration', () => {
 
   afterAll(async () => {
     await RedisConnection.close()
-    ;(RedisConnection as any).instance = null
     await container.stop()
     delete process.env.REDIS_HOST
     delete process.env.REDIS_PORT
@@ -41,9 +40,9 @@ describe('Concurrency integration', () => {
     delete process.env.IDEMPOTENCY_TTL
   })
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks()
-    ;(RedisConnection as any).instance = null
+    await RedisConnection.close()
 
     mockSendMail = jest.fn().mockResolvedValue({ messageId: 'smtp-race-001' })
     mockSave = jest.fn().mockResolvedValue(undefined)

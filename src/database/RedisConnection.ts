@@ -43,17 +43,18 @@ export default class RedisConnection {
   static async getInstance(): Promise<Redis> {
     if (!this.instance) {
       const config = this.getConfig()
+      const isTest = process.env.NODE_ENV === 'test'
       this.instance = new Redis({
         host: config.getHost(),
         port: config.getPort(),
         password: config.getPassword(),
         db: config.getDb(),
         maxRetriesPerRequest: config.getMaxRetriesPerRequest(),
-        connectTimeout: config.getConnectTimeout(),
-        retryStrategy: (times: number) => {
-          return Math.min(times * 100, 3000)
-        }
+        connectTimeout: isTest ? 2000 : config.getConnectTimeout(),
+        retryStrategy: isTest ? () => null : (times: number) => Math.min(times * 100, 3000),
+        lazyConnect: true,
       })
+      await this.instance.connect()
 
       this.instance.on('error', (error) => {
         console.error('Redis connection error:', error)

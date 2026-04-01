@@ -25,6 +25,7 @@ describe('Feature: Email API', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.spyOn(console, 'error').mockImplementation()
 
     mockListAll = jest.fn().mockResolvedValue({ Items: [{ id: '1', from: 'a@a.com' }] })
     ;(SendMailService as jest.MockedClass<typeof SendMailService>).mockImplementation(() => ({
@@ -36,6 +37,10 @@ describe('Feature: Email API', () => {
     ;(DynamoDBConnection.getInstance as jest.Mock).mockResolvedValue({})
 
     SendMailController.setQueue(makeMockQueue())
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
   describe('POST /send-email', () => {

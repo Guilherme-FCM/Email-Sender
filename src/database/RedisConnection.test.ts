@@ -17,6 +17,7 @@ describe('RedisConnection', () => {
       del: jest.fn(),
       ping: jest.fn().mockResolvedValue('PONG'),
       quit: jest.fn().mockResolvedValue('OK'),
+      connect: jest.fn().mockResolvedValue(undefined),
       on: jest.fn(),
       status: 'ready',
       options: {
@@ -58,7 +59,8 @@ describe('RedisConnection', () => {
         expect.objectContaining({
           host: 'testhost',
           port: 6380,
-          db: 1
+          db: 1,
+          lazyConnect: true,
         })
       )
       
