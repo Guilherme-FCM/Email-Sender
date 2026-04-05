@@ -1,12 +1,12 @@
 import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
 import pLimit from 'p-limit'
 import { ISQSEmailWorker } from './ISQSEmailWorker'
-import SendMailUseCase from '../services/SendMailUseCase'
+import SendMailService from '../services/SendMailService'
 
 export class SQSEmailWorker implements ISQSEmailWorker {
   private client: SQSClient
   private queueUrl: string
-  private useCase: SendMailUseCase
+  private useCase: SendMailService
   private running = false
   private limit = pLimit(Number(process.env.SMTP_MAX_CONNECTIONS) || 5)
 
@@ -23,7 +23,7 @@ export class SQSEmailWorker implements ISQSEmailWorker {
       }),
     })
     this.queueUrl = process.env.SQS_QUEUE_URL!
-    this.useCase = new SendMailUseCase()
+    this.useCase = new SendMailService()
   }
 
   async start(): Promise<void> {

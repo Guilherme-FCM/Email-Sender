@@ -1,10 +1,10 @@
 import { Request, Response } from 'express'
 import SendMailController from './SendMailController'
-import SendMailUseCase from '../services/SendMailUseCase'
+import SendMailService from '../services/SendMailService'
 import { SQSEmailQueue } from '../queues/SQSEmailQueue'
 import { IEmailQueue } from '../queues/IEmailQueue'
 
-jest.mock('../services/SendMailUseCase')
+jest.mock('../services/SendMailService')
 jest.mock('../queues/SQSEmailQueue')
 
 const mockResponse = () => {
@@ -25,7 +25,7 @@ describe('SendMailController', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockListAll = jest.fn()
-    ;(SendMailUseCase as jest.MockedClass<typeof SendMailUseCase>).mockImplementation(() => ({
+    ;(SendMailService as jest.MockedClass<typeof SendMailService>).mockImplementation(() => ({
       execute: jest.fn(),
       listAll: mockListAll,
     } as any))

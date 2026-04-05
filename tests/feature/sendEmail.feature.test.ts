@@ -3,11 +3,11 @@ import express from 'express'
 import routes from '../../src/routes'
 import { IEmailQueue } from '../../src/queues/IEmailQueue'
 import SendMailController from '../../src/controllers/SendMailController'
-import SendMailUseCase from '../../src/services/SendMailUseCase'
+import SendMailService from '../../src/services/SendMailService'
 import RedisConnection from '../../src/database/RedisConnection'
 import DynamoDBConnection from '../../src/database/DynamoDBConnection'
 
-jest.mock('../../src/services/SendMailUseCase')
+jest.mock('../../src/services/SendMailService')
 jest.mock('../../src/database/RedisConnection')
 jest.mock('../../src/database/DynamoDBConnection')
 
@@ -28,7 +28,7 @@ describe('Feature: Email API', () => {
     jest.spyOn(console, 'error').mockImplementation()
 
     mockListAll = jest.fn().mockResolvedValue([{ id: '1', from: 'a@a.com' }])
-    ;(SendMailUseCase as jest.MockedClass<typeof SendMailUseCase>).mockImplementation(() => ({
+    ;(SendMailService as jest.MockedClass<typeof SendMailService>).mockImplementation(() => ({
       execute: jest.fn(),
       listAll: mockListAll,
     } as any))

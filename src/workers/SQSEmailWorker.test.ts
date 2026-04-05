@@ -1,9 +1,9 @@
 import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
 import { SQSEmailWorker } from './SQSEmailWorker'
-import SendMailUseCase from '../services/SendMailUseCase'
+import SendMailService from '../services/SendMailService'
 
 jest.mock('@aws-sdk/client-sqs')
-jest.mock('../services/SendMailUseCase')
+jest.mock('../services/SendMailService')
 
 const mockSend = jest.fn()
 const mockExecute = jest.fn()
@@ -35,7 +35,7 @@ describe('SQSEmailWorker', () => {
     ;(SQSClient as jest.MockedClass<typeof SQSClient>).mockImplementation(() => ({
       send: mockSend,
     } as any))
-    ;(SendMailUseCase as jest.MockedClass<typeof SendMailUseCase>).mockImplementation(() => ({
+    ;(SendMailService as jest.MockedClass<typeof SendMailService>).mockImplementation(() => ({
       execute: mockExecute,
     } as any))
 
@@ -50,7 +50,7 @@ describe('SQSEmailWorker', () => {
   })
 
   describe('processMessages', () => {
-    it('should call SendMailUseCase.execute with parsed message body', async () => {
+    it('should call SendMailService.execute with parsed message body', async () => {
       mockSend
         .mockResolvedValueOnce({ Messages: [makeMessage('1', emailPayload)] })
         .mockResolvedValue({ Messages: [] })
@@ -87,7 +87,7 @@ describe('SQSEmailWorker', () => {
       expect(mockExecute).toHaveBeenCalledTimes(2)
     })
 
-    it('should NOT delete message when SendMailUseCase throws', async () => {
+    it('should NOT delete message when SendMailService throws', async () => {
       mockSend
         .mockResolvedValueOnce({ Messages: [makeMessage('5', emailPayload)] })
         .mockResolvedValue({ Messages: [] })

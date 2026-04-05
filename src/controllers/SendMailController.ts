@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import crypto from 'crypto'
 import { IEmailQueue } from '../queues/IEmailQueue'
 import { SQSEmailQueue } from '../queues/SQSEmailQueue'
-import SendMailUseCase from '../services/SendMailUseCase'
+import SendMailService from '../services/SendMailService'
 
 export default class SendMailController {
   private static queue: IEmailQueue = new SQSEmailQueue()
@@ -31,7 +31,7 @@ export default class SendMailController {
   }
 
   public static async list(request: Request, response: Response): Promise<Response> {
-    const service = new SendMailUseCase()
+    const service = new SendMailService()
     const result = await service.listAll()
     return response.json(result)
   }
