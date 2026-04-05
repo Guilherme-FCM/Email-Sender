@@ -1,15 +1,14 @@
 import { GenericContainer, StartedTestContainer } from 'testcontainers'
 import RedisConnection from '../../src/database/RedisConnection'
+import { RedisCacheService } from '../../src/utils/RedisCacheService'
+import { RedisLockService } from '../../src/utils/RedisLockService'
 import SendMailService from '../../src/services/SendMailService'
-import MailSender from '../../src/services/MailSender'
-import { EmailRepository } from '../../src/repositories/EmailRepository'
-
-jest.mock('../../src/services/MailSender')
-jest.mock('../../src/repositories/EmailRepository')
+import { IEmailSender } from '../../src/services/IEmailSender'
+import { IEmailRepository } from '../../src/repositories/IEmailRepository'
 
 describe('Idempotency integration', () => {
   let container: StartedTestContainer
-  let mockSendMail: jest.Mock
+  let mockSend: jest.Mock
   let mockSave: jest.Mock
 
   const emailData = {
@@ -44,52 +43,49 @@ describe('Idempotency integration', () => {
     const redis = await RedisConnection.getInstance()
     await redis.flushdb()
 
-    mockSendMail = jest.fn().mockResolvedValue({ messageId: 'smtp-001' })
+    mockSend = jest.fn().mockResolvedValue({ messageId: 'smtp-001' })
     mockSave = jest.fn().mockResolvedValue(undefined)
-
-    ;(MailSender as jest.MockedClass<typeof MailSender>).mockImplementation(() => ({
-      sendMail: mockSendMail,
-    } as any))
-    ;(EmailRepository as jest.MockedClass<typeof EmailRepository>).mockImplementation(() => ({
-      save: mockSave,
-      all: jest.fn().mockResolvedValue({ Items: [] }),
-    } as any))
   })
 
+  const makeService = () => {
+    const emailSender: IEmailSender = { send: mockSend }
+    const repository: IEmailRepository = { save: mockSave, all: jest.fn().mockResolvedValue([]) }
+    return new SendMailService(emailSender, repository, new RedisCacheService(), new RedisLockService())
+  }
+
   it('should send email only once for duplicate requests within TTL', async () => {
-    const service = new SendMailService()
+    const service = makeService()
 
     const result1 = await service.execute(emailData)
     const result2 = await service.execute(emailData)
 
-    expect(mockSendMail).toHaveBeenCalledTimes(1)
+    expect(mockSend).toHaveBeenCalledTimes(1)
     expect(result1).toEqual({ messageId: 'smtp-001' })
     expect(result2).toEqual({ messageId: 'smtp-001' })
   })
 
   it('should allow resend after TTL expires', async () => {
     const ttlEmailData = { ...emailData, subject: 'TTL Expiry Test' }
-    const service = new SendMailService()
+    const service = makeService()
 
     await service.execute(ttlEmailData)
-    expect(mockSendMail).toHaveBeenCalledTimes(1)
+    expect(mockSend).toHaveBeenCalledTimes(1)
 
-    // Manually expire the key in Redis to simulate TTL without waiting
     const { generatePayloadHash } = await import('../../src/utils/hashGenerator')
     const key = generatePayloadHash(ttlEmailData)
     const redis = await RedisConnection.getInstance()
     await redis.del(key)
 
     await service.execute(ttlEmailData)
-    expect(mockSendMail).toHaveBeenCalledTimes(2)
+    expect(mockSend).toHaveBeenCalledTimes(2)
   }, 15_000)
 
   it('should treat requests with different subjects as distinct', async () => {
-    const service = new SendMailService()
+    const service = makeService()
 
     await service.execute({ ...emailData, subject: 'Subject A' })
     await service.execute({ ...emailData, subject: 'Subject B' })
 
-    expect(mockSendMail).toHaveBeenCalledTimes(2)
+    expect(mockSend).toHaveBeenCalledTimes(2)
   })
 })

@@ -1,8 +1,9 @@
 import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import DynamoDB from '../database/DynamoDBConnection'
 import Email from '../entities/Email'
+import { IEmailRepository } from './IEmailRepository'
 
-export class EmailRepository {
+export class DynamoDBEmailRepository implements IEmailRepository {
   async save(email: Email): Promise<void> {
     const dynamoDB = await DynamoDB.getInstance()
     const params = new PutCommand({
@@ -29,9 +30,10 @@ export class EmailRepository {
     }
   }
 
-  async all(): Promise<any> {
+  async all(): Promise<Email[]> {
     const dynamoDB = await DynamoDB.getInstance()
     const params = new ScanCommand({ TableName: DynamoDB.getTableName() })
-    return dynamoDB.send(params)
+    const result = await dynamoDB.send(params)
+    return (result.Items ?? []) as Email[]
   }
 }

@@ -1,10 +1,14 @@
 import { Address } from 'nodemailer/lib/mailer'
-import MailSender from './MailSender'
-import { EmailRepository } from '../repositories/EmailRepository'
 import Email from '../entities/Email'
 import { generatePayloadHash } from '../utils/hashGenerator'
-import RedisConnection from '../database/RedisConnection'
-import Lock from '../utils/Lock'
+import { IEmailSender } from './IEmailSender'
+import { IEmailRepository } from '../repositories/IEmailRepository'
+import { ICacheService } from '../utils/ICacheService'
+import { ILockService } from '../utils/ILockService'
+import { NodemailerEmailSender } from './NodemailerEmailSender'
+import { DynamoDBEmailRepository } from '../repositories/DynamoDBEmailRepository'
+import { RedisCacheService } from '../utils/RedisCacheService'
+import { RedisLockService } from '../utils/RedisLockService'
 
 type SendMailRequest = {
   from: Address
@@ -16,21 +20,32 @@ type SendMailRequest = {
 
 export default class SendMailService {
   private static readonly CACHE_TTL = Number(process.env.IDEMPOTENCY_TTL) || 300
-  private static readonly REDIS_REQUIRED = process.env.REDIS_REQUIRED !== 'false'
-  private repository: EmailRepository
+  private static get REDIS_REQUIRED() { return process.env.REDIS_REQUIRED !== 'false' }
 
-  constructor() {
-    this.repository = new EmailRepository()
+  private readonly emailSender: IEmailSender
+  private readonly repository: IEmailRepository
+  private readonly cache: ICacheService
+  private readonly lock: ILockService
+
+  constructor(
+    emailSender?: IEmailSender,
+    repository?: IEmailRepository,
+    cache?: ICacheService,
+    lock?: ILockService
+  ) {
+    this.emailSender = emailSender ?? new NodemailerEmailSender()
+    this.repository = repository ?? new DynamoDBEmailRepository()
+    this.cache = cache ?? new RedisCacheService()
+    this.lock = lock ?? new RedisLockService()
   }
 
   private async isDuplicate(key: string): Promise<{ isDuplicate: boolean; cachedResult?: any }> {
     try {
-      const redis = await RedisConnection.getInstance()
-      const cached = await redis.get(key)
+      const cached = await this.cache.get(key)
       if (!cached) return { isDuplicate: false }
       return { isDuplicate: true, cachedResult: JSON.parse(cached) }
     } catch (error) {
-      console.error('Redis error in isDuplicate:', error)
+      console.error('Cache error in isDuplicate:', error)
       if (SendMailService.REDIS_REQUIRED) throw new Error('Redis unavailable and required for idempotency')
       console.warn('Redis unavailable, proceeding without cache check')
       return { isDuplicate: false }
@@ -39,10 +54,9 @@ export default class SendMailService {
 
   private async cacheResult(key: string, result: any): Promise<void> {
     try {
-      const redis = await RedisConnection.getInstance()
-      await redis.setex(key, SendMailService.CACHE_TTL, JSON.stringify(result))
+      await this.cache.set(key, JSON.stringify(result), SendMailService.CACHE_TTL)
     } catch (error) {
-      console.error('Redis error in cacheResult:', error)
+      console.error('Cache error in cacheResult:', error)
       if (SendMailService.REDIS_REQUIRED) throw new Error('Redis unavailable and required for idempotency')
       console.warn('Redis unavailable, proceeding without caching')
     }
@@ -51,7 +65,7 @@ export default class SendMailService {
   async execute(data: SendMailRequest) {
     const key = generatePayloadHash(data)
 
-    const acquired = await Lock.acquire(key)
+    const acquired = await this.lock.acquire(key)
     if (!acquired) {
       return { status: 'processing', message: 'Request is already being processed' }
     }
@@ -60,9 +74,7 @@ export default class SendMailService {
       const { isDuplicate, cachedResult } = await this.isDuplicate(key)
       if (isDuplicate) return cachedResult || { status: 'duplicate', message: 'Request already processed' }
 
-      const mailSender = new MailSender(data.from, data.to, data.subject, data.message, data.text)
-      const result = await mailSender.sendMail()
-      if (result instanceof Error) throw result
+      const result = await this.emailSender.send(data)
 
       await this.cacheResult(key, result)
 
@@ -75,11 +87,11 @@ export default class SendMailService {
       console.error('[SendMailService] Error:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' }
     } finally {
-      await Lock.release(key)
+      await this.lock.release(key)
     }
   }
 
   async listAll() {
-    return await this.repository.all()
+    return this.repository.all()
   }
 }

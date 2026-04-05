@@ -27,7 +27,7 @@ describe('Feature: Email API', () => {
     jest.clearAllMocks()
     jest.spyOn(console, 'error').mockImplementation()
 
-    mockListAll = jest.fn().mockResolvedValue({ Items: [{ id: '1', from: 'a@a.com' }] })
+    mockListAll = jest.fn().mockResolvedValue([{ id: '1', from: 'a@a.com' }])
     ;(SendMailService as jest.MockedClass<typeof SendMailService>).mockImplementation(() => ({
       execute: jest.fn(),
       listAll: mockListAll,
@@ -86,7 +86,7 @@ describe('Feature: Email API', () => {
       const res = await request(app).get('/emails')
 
       expect(res.status).toBe(200)
-      expect(res.body).toMatchObject({ Items: [{ id: '1', from: 'a@a.com' }] })
+      expect(res.body).toEqual([{ id: '1', from: 'a@a.com' }])
     })
   })
 

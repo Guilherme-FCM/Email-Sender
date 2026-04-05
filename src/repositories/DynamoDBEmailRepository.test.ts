@@ -1,16 +1,16 @@
-import { EmailRepository } from './EmailRepository'
+import { DynamoDBEmailRepository } from './DynamoDBEmailRepository'
 import Email from '../entities/Email'
 import DynamoDB from '../database/DynamoDBConnection'
 import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 
 jest.mock('../database/DynamoDBConnection')
 
-describe('EmailRepository', () => {
-  let repository: EmailRepository
+describe('DynamoDBEmailRepository', () => {
+  let repository: DynamoDBEmailRepository
   let mockSend: jest.Mock
 
   beforeEach(() => {
-    repository = new EmailRepository()
+    repository = new DynamoDBEmailRepository()
     mockSend = jest.fn()
     ;(DynamoDB.getInstance as jest.Mock).mockResolvedValue({ send: mockSend })
     ;(DynamoDB.getTableName as jest.Mock).mockReturnValue('test-table')
@@ -20,7 +20,7 @@ describe('EmailRepository', () => {
   describe('save', () => {
     it('should save email with idempotency key to DynamoDB', async () => {
       mockSend.mockResolvedValue({})
-      
+
       const email = new Email(
         'sender@example.com',
         'recipient@example.com',
@@ -41,21 +41,22 @@ describe('EmailRepository', () => {
     })
 
     it('should silently ignore ConditionalCheckFailedException', async () => {
-      const error = new Error('Duplicate')
+      const error = new Error('Conditional check failed')
       error.name = 'ConditionalCheckFailedException'
       mockSend.mockRejectedValue(error)
 
-      const email = new Email('a@a.com', 'b@b.com', 'S', 'M')
-      await expect(repository.save(email)).resolves.not.toThrow()
+      await expect(
+        repository.save(new Email('a@a.com', 'b@b.com', 'Sub', '<p>Msg</p>'))
+      ).resolves.not.toThrow()
     })
 
-    it('should rethrow non-ConditionalCheckFailedException errors', async () => {
+    it('should rethrow non-conditional errors', async () => {
       const error = new Error('DynamoDB unavailable')
-      error.name = 'ProvisionedThroughputExceededException'
       mockSend.mockRejectedValue(error)
 
-      const email = new Email('a@a.com', 'b@b.com', 'S', 'M')
-      await expect(repository.save(email)).rejects.toThrow('DynamoDB unavailable')
+      await expect(
+        repository.save(new Email('a@a.com', 'b@b.com', 'Sub', '<p>Msg</p>'))
+      ).rejects.toThrow('DynamoDB unavailable')
     })
   })
 
@@ -69,7 +70,13 @@ describe('EmailRepository', () => {
       expect(mockSend).toHaveBeenCalledTimes(1)
       const callArg = mockSend.mock.calls[0][0]
       expect(callArg).toBeInstanceOf(ScanCommand)
-      expect(result.Items).toEqual(mockItems)
+      expect(result).toEqual(mockItems)
+    })
+
+    it('should return empty array when no items exist', async () => {
+      mockSend.mockResolvedValue({})
+      const result = await repository.all()
+      expect(result).toEqual([])
     })
   })
 })

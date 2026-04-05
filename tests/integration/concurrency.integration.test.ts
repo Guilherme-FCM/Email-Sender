@@ -1,16 +1,14 @@
 import { GenericContainer, StartedTestContainer } from 'testcontainers'
 import RedisConnection from '../../src/database/RedisConnection'
-import Lock from '../../src/utils/Lock'
+import { RedisLockService } from '../../src/utils/RedisLockService'
+import { RedisCacheService } from '../../src/utils/RedisCacheService'
 import SendMailService from '../../src/services/SendMailService'
-import MailSender from '../../src/services/MailSender'
-import { EmailRepository } from '../../src/repositories/EmailRepository'
-
-jest.mock('../../src/services/MailSender')
-jest.mock('../../src/repositories/EmailRepository')
+import { IEmailSender } from '../../src/services/IEmailSender'
+import { IEmailRepository } from '../../src/repositories/IEmailRepository'
 
 describe('Concurrency integration', () => {
   let container: StartedTestContainer
-  let mockSendMail: jest.Mock
+  let mockSend: jest.Mock
   let mockSave: jest.Mock
 
   const emailData = {
@@ -42,63 +40,59 @@ describe('Concurrency integration', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks()
-
-    mockSendMail = jest.fn().mockResolvedValue({ messageId: 'smtp-race-001' })
+    mockSend = jest.fn().mockResolvedValue({ messageId: 'smtp-race-001' })
     mockSave = jest.fn().mockResolvedValue(undefined)
-
-    ;(MailSender as jest.MockedClass<typeof MailSender>).mockImplementation(() => ({
-      sendMail: mockSendMail,
-    } as any))
-    ;(EmailRepository as jest.MockedClass<typeof EmailRepository>).mockImplementation(() => ({
-      save: mockSave,
-      all: jest.fn().mockResolvedValue({ Items: [] }),
-    } as any))
   })
 
-  describe('Lock', () => {
+  describe('RedisLockService', () => {
+    let lockService: RedisLockService
+
     beforeAll(async () => {
       await RedisConnection.getInstance()
+      lockService = new RedisLockService()
     })
 
     afterEach(async () => {
       const redis = await RedisConnection.getInstance()
-      await redis.del('test-resource', 'held-resource', 'reacquire-resource', 'resource-a', 'resource-b')
+      await redis.del('lock:test-resource', 'lock:held-resource', 'lock:reacquire-resource', 'lock:resource-a', 'lock:resource-b')
     })
 
     it('should acquire a lock and return true', async () => {
-      const acquired = await Lock.acquire('test-resource')
+      const acquired = await lockService.acquire('test-resource')
       expect(acquired).toBe(true)
-      await Lock.release('test-resource')
+      await lockService.release('test-resource')
     })
 
     it('should return false when lock is already held', async () => {
-      await Lock.acquire('held-resource')
-      const second = await Lock.acquire('held-resource')
+      await lockService.acquire('held-resource')
+      const second = await lockService.acquire('held-resource')
       expect(second).toBe(false)
-      await Lock.release('held-resource')
+      await lockService.release('held-resource')
     })
 
     it('should allow re-acquisition after release', async () => {
-      await Lock.acquire('reacquire-resource')
-      await Lock.release('reacquire-resource')
-      const reacquired = await Lock.acquire('reacquire-resource')
+      await lockService.acquire('reacquire-resource')
+      await lockService.release('reacquire-resource')
+      const reacquired = await lockService.acquire('reacquire-resource')
       expect(reacquired).toBe(true)
-      await Lock.release('reacquire-resource')
+      await lockService.release('reacquire-resource')
     })
 
     it('should isolate locks by resource key', async () => {
-      const a = await Lock.acquire('resource-a')
-      const b = await Lock.acquire('resource-b')
+      const a = await lockService.acquire('resource-a')
+      const b = await lockService.acquire('resource-b')
       expect(a).toBe(true)
       expect(b).toBe(true)
-      await Lock.release('resource-a')
-      await Lock.release('resource-b')
+      await lockService.release('resource-a')
+      await lockService.release('resource-b')
     })
   })
 
   describe('Race conditions', () => {
     it('should send email exactly once under 10 concurrent identical requests', async () => {
-      const service = new SendMailService()
+      const emailSender: IEmailSender = { send: mockSend }
+      const repository: IEmailRepository = { save: mockSave, all: jest.fn().mockResolvedValue([]) }
+      const service = new SendMailService(emailSender, repository, new RedisCacheService(), new RedisLockService())
 
       const results = await Promise.all(
         Array.from({ length: 10 }, () => service.execute(emailData))
@@ -110,14 +104,14 @@ describe('Concurrency integration', () => {
       const processing = results.filter(r => r && (r as any).status === 'processing')
       const duplicate = results.filter(r => r && (r as any).status === 'duplicate')
 
-      // Exactly one request should have gone through to SMTP
-      expect(mockSendMail).toHaveBeenCalledTimes(1)
-      // All results must be accounted for
+      expect(mockSend).toHaveBeenCalledTimes(1)
       expect(sent.length + processing.length + duplicate.length).toBe(10)
     })
 
     it('should not call repository save more than once for concurrent identical requests', async () => {
-      const service = new SendMailService()
+      const emailSender: IEmailSender = { send: mockSend }
+      const repository: IEmailRepository = { save: mockSave, all: jest.fn().mockResolvedValue([]) }
+      const service = new SendMailService(emailSender, repository, new RedisCacheService(), new RedisLockService())
 
       await Promise.all(
         Array.from({ length: 5 }, () => service.execute({ ...emailData, subject: 'Save-Once Test' }))
