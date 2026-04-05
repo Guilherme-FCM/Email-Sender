@@ -3,11 +3,11 @@ import express from 'express'
 import routes from '../../src/routes'
 import { IEmailQueue } from '../../src/queues/IEmailQueue'
 import SendMailController from '../../src/controllers/SendMailController'
-import SendMailService from '../../src/services/SendMailService'
+import SendMailUseCase from '../../src/services/SendMailUseCase'
 import RedisConnection from '../../src/database/RedisConnection'
 import DynamoDBConnection from '../../src/database/DynamoDBConnection'
 
-jest.mock('../../src/services/SendMailService')
+jest.mock('../../src/services/SendMailUseCase')
 jest.mock('../../src/database/RedisConnection')
 jest.mock('../../src/database/DynamoDBConnection')
 
@@ -27,8 +27,8 @@ describe('Feature: Email API', () => {
     jest.clearAllMocks()
     jest.spyOn(console, 'error').mockImplementation()
 
-    mockListAll = jest.fn().mockResolvedValue({ Items: [{ id: '1', from: 'a@a.com' }] })
-    ;(SendMailService as jest.MockedClass<typeof SendMailService>).mockImplementation(() => ({
+    mockListAll = jest.fn().mockResolvedValue([{ id: '1', from: 'a@a.com' }])
+    ;(SendMailUseCase as jest.MockedClass<typeof SendMailUseCase>).mockImplementation(() => ({
       execute: jest.fn(),
       listAll: mockListAll,
     } as any))
@@ -86,7 +86,7 @@ describe('Feature: Email API', () => {
       const res = await request(app).get('/emails')
 
       expect(res.status).toBe(200)
-      expect(res.body).toMatchObject({ Items: [{ id: '1', from: 'a@a.com' }] })
+      expect(res.body).toEqual([{ id: '1', from: 'a@a.com' }])
     })
   })
 
