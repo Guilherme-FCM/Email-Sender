@@ -1,7 +1,7 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import routes from './routes'
-import { EmailWorker } from './workers/EmailWorker'
+import { SQSEmailWorker } from './workers/SQSEmailWorker'
 
 dotenv.config()
 
@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}! 🚀`)
 
-  const worker = new EmailWorker()
+  const worker = new SQSEmailWorker()
   worker.start().catch((error) => {
     console.error('EmailWorker crashed:', error)
   })

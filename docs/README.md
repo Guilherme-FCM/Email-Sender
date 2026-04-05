@@ -27,6 +27,9 @@ All documentation follows a consistent naming pattern: `TASK{N}_{DESCRIPTION}.md
 - [TASK4_SUMMARY.md](./TASK4_SUMMARY.md) - Executive summary and files changed
 - [TASK4_QUICK_START.md](./TASK4_QUICK_START.md) - Quick start guide for developers
 
+#### Task 5: Hexagonal Naming & Interface-Driven Design
+- [TASK5_HEXAGONAL_NAMING.md](./TASK5_HEXAGONAL_NAMING.md) - Implementation guide
+
 #### Task 8: Comprehensive Test Suite
 - [TASK8_COMPREHENSIVE_TEST_SUITE.md](./TASK8_COMPREHENSIVE_TEST_SUITE.md) - Technical guide: test strategy, coverage targets, integration tests
 - [TASK8_SUMMARY.md](./TASK8_SUMMARY.md) - Executive summary, files changed, acceptance criteria
@@ -41,8 +44,6 @@ All documentation follows a consistent naming pattern: `TASK{N}_{DESCRIPTION}.md
 1. Read [TASK2_QUICK_START.md](./TASK2_QUICK_START.md) for immediate setup
 2. Check [TASK2_REDIS_INTEGRATION.md](./TASK2_REDIS_INTEGRATION.md) for detailed implementation
 3. Review [TASK2_SUMMARY.md](./TASK2_SUMMARY.md) for overview and metrics
-
-
 
 ### Contributing
 - [DOCUMENTATION_STANDARDS.md](./DOCUMENTATION_STANDARDS.md) - Follow these standards for new documentation
@@ -96,7 +97,7 @@ When creating documentation for a new task:
 ## External Links
 
 - [Main README](../README.md) - Project overview
-- [MVP Tasks](../MVP_TASKS.md) - Task tracking and planning
+- [Roadmap](../ROADMAP.md) - Feature roadmap and upcoming work
 
 ## Questions?
 
